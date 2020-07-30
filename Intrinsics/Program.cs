@@ -8,32 +8,19 @@ namespace Intrinsics
 {
     internal class Program
     {
-        private static void Main(string[] args)
-        {
-            var table = new ConsoleTable("FullName", "Supported");
-
-            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-
-            GetSupportedIntrinsics(assemblies)
-                .ForEach(tuple => table.AddRow(tuple.Item1, tuple.Item2));
-
-            table.Write();
-            Console.WriteLine();
-        }
-
-        private static IEnumerable<Tuple<string, string>> GetSupportedIntrinsics(IEnumerable<Assembly> allAssemblies)
+        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<string> Methods)> GetSupportedIntrinsics(IEnumerable<Assembly> allAssemblies)
         {
             return allAssemblies
                 .SelectMany(GetSupportedIntrinsics);
         }
 
-        private static IEnumerable<Tuple<string, string>> GetSupportedIntrinsics(Assembly assembly)
+        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<string> Methods)> GetSupportedIntrinsics(Assembly assembly)
         {
             return assembly.DefinedTypes
                 .SelectMany(GetSupportedIntrinsics);
         }
 
-        private static IEnumerable<Tuple<string, string>> GetSupportedIntrinsics(TypeInfo definedType)
+        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<string> Methods)> GetSupportedIntrinsics(TypeInfo definedType)
         {
             if (definedType.FullName.StartsWith("System.Runtime.Intrinsics", StringComparison.Ordinal))
             {
@@ -41,11 +28,33 @@ namespace Intrinsics
                 if (isSupportedPropertyInfo != null)
                 {
                     var supported = (bool)isSupportedPropertyInfo.GetValue(null);
-                    return new[] { Tuple.Create(definedType.FullName, supported ? "Yes" : "No") };
+                    var methods = definedType
+                        .GetMethods()
+                        .Select(x => x.Name);
+                    return new[] { (definedType.FullName, supported, methods) };
                 }
             }
 
-            return Enumerable.Empty<Tuple<string, string>>();
+            return Enumerable.Empty<(string FullName, bool IsSupported, IEnumerable<string> Methods)>();
+        }
+
+        private static void Main(string[] args)
+        {
+            var table = new ConsoleTable("FullName", "Supported", "Methods");
+
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+            var supportedIntrinsics = GetSupportedIntrinsics(assemblies).ToArray();
+
+            foreach (var supportedIntrinsic in supportedIntrinsics)
+            {
+                var supported = supportedIntrinsic.IsSupported ? "Supported" : "Not Supported";
+                Console.WriteLine($"{supportedIntrinsic.FullName} - {supported }");
+                foreach (var method in supportedIntrinsic.Methods)
+                {
+                    Console.WriteLine($"\t{method}");
+                }
+            }
         }
     }
 }
