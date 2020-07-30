@@ -1,5 +1,4 @@
-﻿using DnsClient.Internal;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -25,19 +24,19 @@ namespace Intrinsics
             return stringBuilder.ToString();
         }
 
-        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters)> Methods)> GetSupportedIntrinsics(IEnumerable<Assembly> allAssemblies)
+        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters, string ReturnParameter)> Methods)> GetSupportedIntrinsics(IEnumerable<Assembly> allAssemblies)
         {
             return allAssemblies
                 .SelectMany(GetSupportedIntrinsics);
         }
 
-        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters)> Methods)> GetSupportedIntrinsics(Assembly assembly)
+        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters, string ReturnParameter)> Methods)> GetSupportedIntrinsics(Assembly assembly)
         {
             return assembly.DefinedTypes
                 .SelectMany(GetSupportedIntrinsics);
         }
 
-        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters)> Methods)> GetSupportedIntrinsics(TypeInfo definedType)
+        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters, string ReturnParameter)> Methods)> GetSupportedIntrinsics(TypeInfo definedType)
         {
             if (definedType.FullName.StartsWith("System.Runtime.Intrinsics", StringComparison.Ordinal))
             {
@@ -48,13 +47,14 @@ namespace Intrinsics
                     var methods = definedType
                         .GetMethods()
                         .Where(x => !x.IsSpecialName)
-                        .Select(x => (x.Name, x.GetParameters().Select(GetParameter)));
+                        .Where(x => x.IsStatic)
+                        .Select(x => (x.Name, x.GetParameters().Select(GetParameter), GetParameter(x.ReturnParameter)));
 
                     return new[] { (definedType.FullName, supported, methods) };
                 }
             }
 
-            return Enumerable.Empty<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters)> Methods)>();
+            return Enumerable.Empty<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters, string ReturnParameter)> Methods)>();
         }
 
         private static void Main(string[] args)
@@ -69,7 +69,7 @@ namespace Intrinsics
                 {
                     var parameters = string.Join(", ", method.Parameters);
 
-                    Console.WriteLine($"\t{method.Name} ({parameters})");
+                    Console.WriteLine($"\t{method.Name} ({parameters}) {method.ReturnParameter}");
                 }
             }
         }
