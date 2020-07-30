@@ -1,26 +1,43 @@
-﻿using ConsoleTables;
+﻿using DnsClient.Internal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 
 namespace Intrinsics
 {
     internal class Program
     {
-        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<string> Methods)> GetSupportedIntrinsics(IEnumerable<Assembly> allAssemblies)
+        private static string GetParameter(ParameterInfo parameterInfo)
+        {
+            var stringBuilder = new StringBuilder();
+            stringBuilder.Append(parameterInfo.ParameterType.Name.Split('`')[0]);
+
+            if (parameterInfo.ParameterType.IsGenericType)
+            {
+                stringBuilder.Append("<");
+
+                stringBuilder.Append(parameterInfo.ParameterType.GenericTypeArguments.Single().Name);
+
+                stringBuilder.Append(">");
+            }
+            return stringBuilder.ToString();
+        }
+
+        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters)> Methods)> GetSupportedIntrinsics(IEnumerable<Assembly> allAssemblies)
         {
             return allAssemblies
                 .SelectMany(GetSupportedIntrinsics);
         }
 
-        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<string> Methods)> GetSupportedIntrinsics(Assembly assembly)
+        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters)> Methods)> GetSupportedIntrinsics(Assembly assembly)
         {
             return assembly.DefinedTypes
                 .SelectMany(GetSupportedIntrinsics);
         }
 
-        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<string> Methods)> GetSupportedIntrinsics(TypeInfo definedType)
+        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters)> Methods)> GetSupportedIntrinsics(TypeInfo definedType)
         {
             if (definedType.FullName.StartsWith("System.Runtime.Intrinsics", StringComparison.Ordinal))
             {
@@ -30,29 +47,29 @@ namespace Intrinsics
                     var supported = (bool)isSupportedPropertyInfo.GetValue(null);
                     var methods = definedType
                         .GetMethods()
-                        .Select(x => x.Name);
+                        .Where(x => !x.IsSpecialName)
+                        .Select(x => (x.Name, x.GetParameters().Select(GetParameter)));
+
                     return new[] { (definedType.FullName, supported, methods) };
                 }
             }
 
-            return Enumerable.Empty<(string FullName, bool IsSupported, IEnumerable<string> Methods)>();
+            return Enumerable.Empty<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters)> Methods)>();
         }
 
         private static void Main(string[] args)
         {
-            var table = new ConsoleTable("FullName", "Supported", "Methods");
-
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
-            var supportedIntrinsics = GetSupportedIntrinsics(assemblies).ToArray();
-
-            foreach (var supportedIntrinsic in supportedIntrinsics)
+            foreach (var supportedIntrinsic in GetSupportedIntrinsics(assemblies))
             {
                 var supported = supportedIntrinsic.IsSupported ? "Supported" : "Not Supported";
                 Console.WriteLine($"{supportedIntrinsic.FullName} - {supported }");
                 foreach (var method in supportedIntrinsic.Methods)
                 {
-                    Console.WriteLine($"\t{method}");
+                    var parameters = string.Join(", ", method.Parameters);
+
+                    Console.WriteLine($"\t{method.Name} ({parameters})");
                 }
             }
         }
