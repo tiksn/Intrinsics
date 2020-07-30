@@ -6,7 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ConsoleTables" Version="2.4.2" />
     <PackageReference Include="TIKSN-Framework" Version="3.2.0-alpha.28" />
   </ItemGroup>
 
