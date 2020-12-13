@@ -17,11 +17,20 @@ namespace Intrinsics
             {
                 stringBuilder.Append("<");
 
-                stringBuilder.Append(parameterInfo.ParameterType.GenericTypeArguments.Single().Name);
+                stringBuilder.Append(GetParameterName(parameterInfo.ParameterType.GenericTypeArguments));
 
                 stringBuilder.Append(">");
             }
             return stringBuilder.ToString();
+
+            static string GetParameterName(Type[] genericTypeArguments)
+            {
+                var names = genericTypeArguments
+                    .Select(x => x.Name)
+                    .ToArray();
+
+                return string.Join(", ", names);
+            }
         }
 
         private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters, string ReturnParameter)> Methods)> GetSupportedIntrinsics(IEnumerable<Assembly> allAssemblies)
