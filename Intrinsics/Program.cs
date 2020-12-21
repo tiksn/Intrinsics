@@ -33,19 +33,19 @@ namespace Intrinsics
             }
         }
 
-        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters, string ReturnParameter)> Methods)> GetSupportedIntrinsics(IEnumerable<Assembly> allAssemblies)
+        private static IEnumerable<SupportedIntrinsics> GetSupportedIntrinsics(IEnumerable<Assembly> allAssemblies)
         {
             return allAssemblies
                 .SelectMany(GetSupportedIntrinsics);
         }
 
-        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters, string ReturnParameter)> Methods)> GetSupportedIntrinsics(Assembly assembly)
+        private static IEnumerable<SupportedIntrinsics> GetSupportedIntrinsics(Assembly assembly)
         {
             return assembly.DefinedTypes
                 .SelectMany(GetSupportedIntrinsics);
         }
 
-        private static IEnumerable<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters, string ReturnParameter)> Methods)> GetSupportedIntrinsics(TypeInfo definedType)
+        private static IEnumerable<SupportedIntrinsics> GetSupportedIntrinsics(TypeInfo definedType)
         {
             if (definedType.FullName.StartsWith("System.Runtime.Intrinsics", StringComparison.Ordinal))
             {
@@ -57,13 +57,13 @@ namespace Intrinsics
                         .GetMethods()
                         .Where(x => !x.IsSpecialName)
                         .Where(x => x.IsStatic)
-                        .Select(x => (x.Name, x.GetParameters().Select(GetParameter), GetParameter(x.ReturnParameter)));
+                        .Select(x => new IntrinsicsMethod(x.Name, x.GetParameters().Select(GetParameter), GetParameter(x.ReturnParameter)));
 
-                    return new[] { (definedType.FullName, supported, methods) };
+                    return new[] { new SupportedIntrinsics(definedType.FullName, supported, methods) };
                 }
             }
 
-            return Enumerable.Empty<(string FullName, bool IsSupported, IEnumerable<(string Name, IEnumerable<string> Parameters, string ReturnParameter)> Methods)>();
+            return Enumerable.Empty<SupportedIntrinsics>();
         }
 
         private static void Main(string[] args)
@@ -83,4 +83,8 @@ namespace Intrinsics
             }
         }
     }
+
+    internal record SupportedIntrinsics(string FullName, bool IsSupported, IEnumerable<IntrinsicsMethod> Methods);
+
+    internal record IntrinsicsMethod(string Name, IEnumerable<string> Parameters, string ReturnParameter);
 }
