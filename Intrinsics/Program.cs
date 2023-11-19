@@ -49,17 +49,20 @@ namespace Intrinsics
         {
             if (definedType.FullName.StartsWith("System.Runtime.Intrinsics", StringComparison.Ordinal))
             {
-                var isSupportedPropertyInfo = definedType.GetProperty("IsSupported");
-                if (isSupportedPropertyInfo != null)
+                if (!definedType.ContainsGenericParameters)
                 {
-                    var supported = (bool)isSupportedPropertyInfo.GetValue(null);
-                    var methods = definedType
-                        .GetMethods()
-                        .Where(x => !x.IsSpecialName)
-                        .Where(x => x.IsStatic)
-                        .Select(x => new IntrinsicsMethod(x.Name, x.GetParameters().Select(GetParameter), GetParameter(x.ReturnParameter)));
+                    var isSupportedPropertyInfo = definedType.GetProperty("IsSupported");
+                    if (isSupportedPropertyInfo != null)
+                    {
+                        var supported = (bool)isSupportedPropertyInfo.GetValue(null);
+                        var methods = definedType
+                            .GetMethods()
+                            .Where(x => !x.IsSpecialName)
+                            .Where(x => x.IsStatic)
+                            .Select(x => new IntrinsicsMethod(x.Name, x.GetParameters().Select(GetParameter), GetParameter(x.ReturnParameter)));
 
-                    return new[] { new SupportedIntrinsics(definedType.FullName, supported, methods) };
+                        return new[] { new SupportedIntrinsics(definedType.FullName, supported, methods) };
+                    }
                 }
             }
 
